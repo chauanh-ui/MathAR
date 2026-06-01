@@ -55,17 +55,6 @@
         }
 
         /* ========== Screen Management ========== */
-        .screen {
-            display: none;
-            min-height: 100vh;
-            width: 100%;
-        }
-
-        .screen.active {
-            display: flex;
-            flex-direction: column;
-        }
-
         /* ========== Global Header ========== */
         .global-header {
             height: var(--header-height);
@@ -3833,12 +3822,17 @@
 
         /* ========== Page Transitions ========== */
         .screen {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
             opacity: 0;
             transform: translateX(20px);
             transition: all 0.25s ease;
         }
 
         .screen.active {
+            display: flex;
+            flex-direction: column;
             opacity: 1;
             transform: translateX(0);
         }
@@ -4944,7 +4938,11 @@
             // Show target screen
             const targetScreen = document.querySelector(`[data-screen="${name}"]`);
             if (targetScreen) {
-                targetScreen.classList.add('active');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        targetScreen.classList.add('active');
+                    });
+                });
 
                 // Add to history if different from current
                 if (screenHistory.length === 0 || screenHistory[screenHistory.length - 1] !== name) {
