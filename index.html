@@ -5599,33 +5599,6 @@
                     // Show objects
                     arScene.showObjects(animal, count);
                     this.currentARScene = arScene;
-
-                    // Add AR button - always show, will check support when clicked
-                    const arBtn = document.createElement('button');
-                    arBtn.className = 'ar-float-btn';
-                    arBtn.innerHTML = '🥽 AR';
-                    arBtn.style.cssText = `
-                        position: absolute;
-                        bottom: 80px;
-                        right: 16px;
-                        width: 56px;
-                        height: 56px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
-                        color: white;
-                        border: none;
-                        font-size: 20px;
-                        font-weight: 700;
-                        cursor: pointer;
-                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-                        z-index: 100;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        animation: pulse-glow 2s ease-in-out infinite;
-                    `;
-                    arBtn.onclick = () => this.startAR();
-                    container.appendChild(arBtn);
                 } else {
                     // Fallback to emoji grid
                     const grid = document.createElement('div');
@@ -5668,14 +5641,124 @@
 
                     container.appendChild(grid);
                 }
+
+                // Add AR button - ALWAYS show regardless of ARScene
+                const arBtn = document.createElement('button');
+                arBtn.id = 'arFloatBtn';
+                arBtn.className = 'ar-float-btn';
+                arBtn.innerHTML = '🥽';
+                arBtn.title = 'Xem trong AR';
+                arBtn.setAttribute('aria-label', 'Mở AR Camera');
+                arBtn.style.cssText = `
+                    position: absolute;
+                    bottom: 80px;
+                    right: 16px;
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+                    color: white;
+                    border: none;
+                    font-size: 24px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+                    z-index: 100;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    animation: pulse-glow 2s ease-in-out infinite;
+                `;
+                arBtn.onclick = () => this.startAR();
+                container.appendChild(arBtn);
             }
 
             startAR() {
-                if (this.currentARScene) {
-                    this.currentARScene.startAR();
-                } else {
-                    showToast('AR không khả dụng trên thiết bị này', 'warning');
+                // Check WebXR support
+                const isXRSupported = navigator.xr && typeof navigator.xr.isSessionSupported === 'function';
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+                if (!isXRSupported && !isIOS) {
+                    showToast('Thiết bị của bạn không hỗ trợ AR', 'warning');
+                    return;
                 }
+
+                // Show AR modal with model
+                this.showARModal();
+            }
+
+            showARModal() {
+                const animal = this.currentAnimal || 'cat';
+                const emoji = EXERCISE_1_CONFIG.animalEmojis[animal];
+
+                // Create fullscreen AR overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'ar-fullscreen-overlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    inset: 0;
+                    z-index: 9999;
+                    background: white;
+                `;
+
+                // Get 3D model URL (fallback to placeholder)
+                const modelUrl = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+
+                const viewer = document.createElement('model-viewer');
+                viewer.src = modelUrl;
+                viewer.alt = emoji;
+                viewer.ar = true;
+                viewer.arModes = 'scene-viewer webxr quick-look';
+                viewer.cameraControls = true;
+                viewer.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                `;
+
+                // Close button
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '✕';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                    background: white;
+                    border: none;
+                    font-size: 24px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    z-index: 10000;
+                    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+                `;
+                closeBtn.onclick = () => document.body.removeChild(overlay);
+
+                // Instruction text
+                const instruction = document.createElement('div');
+                instruction.innerHTML = '📍 Di chuyển điện thoại để xem model<br><small>Tap "View in your space" để bật AR</small>';
+                instruction.style.cssText = `
+                    position: absolute;
+                    bottom: 100px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0,0,0,0.75);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 24px;
+                    font-size: 14px;
+                    text-align: center;
+                    z-index: 10000;
+                    max-width: 80%;
+                `;
+
+                overlay.appendChild(viewer);
+                overlay.appendChild(closeBtn);
+                overlay.appendChild(instruction);
+                document.body.appendChild(overlay);
+
+                haptic('medium');
             }
 
             loadChoices(choices, correctAnswer) {
