@@ -1,6 +1,7 @@
 /**
  * MathAR Kids - AR Engine Module
  * Xử lý toàn bộ logic AR, camera, và hiển thị đối tượng 3D
+ * Version 2.0 - Real Camera Support
  */
 
 // ========== 3D MODELS CDN ==========
@@ -48,6 +49,199 @@ const EMOJI_FALLBACK = {
     number9: '9️⃣', number0: '0️⃣',
 };
 
+// ========== INJECT AR STYLES ==========
+// Gọi ngay khi file load để đảm bảo animation có sẵn
+(function injectARStyles() {
+    if (document.getElementById('ar-styles-injected')) return;
+
+    const style = document.createElement('style');
+    style.id = 'ar-styles-injected';
+    style.textContent = `
+        /* Float animations cho emoji */
+        @keyframes ar-float-0 {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(2deg); }
+        }
+        @keyframes ar-float-1 {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(-2deg); }
+        }
+        @keyframes ar-float-2 {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(3deg); }
+        }
+
+        /* Shake animation cho wrong answer */
+        @keyframes ar-shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-12px); }
+            40% { transform: translateX(12px); }
+            60% { transform: translateX(-12px); }
+            80% { transform: translateX(12px); }
+        }
+
+        /* Celebrate animation cho correct answer */
+        @keyframes ar-celebrate {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.3) rotate(-10deg); }
+            50% { transform: scale(1.5) rotate(10deg); }
+            75% { transform: scale(1.3) rotate(-5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* Pulse animation */
+        @keyframes ar-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+        }
+
+        /* Base float animation cho grid items */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* Camera fullscreen video */
+        .ar-camera-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 9998;
+            background: #000;
+        }
+
+        /* Emoji overlay trên camera */
+        .ar-emoji-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px;
+            pointer-events: none;
+        }
+
+        .ar-emoji-item {
+            font-size: 64px;
+            cursor: pointer;
+            pointer-events: auto;
+            user-select: none;
+            transition: transform 0.2s, filter 0.2s;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .ar-emoji-item:active {
+            transform: scale(1.2);
+        }
+
+        .ar-emoji-item.highlighted {
+            animation: ar-celebrate 0.6s ease-out;
+        }
+
+        /* Close button styling */
+        .ar-close-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.95);
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10001;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .ar-close-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* AR View Button */
+        .ar-view-btn {
+            margin-top: 16px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Nunito', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+            transition: all 0.3s;
+        }
+
+        .ar-view-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Permission Modal */
+        .ar-permission-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10002;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .ar-permission-content {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            text-align: center;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .ar-permission-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .ar-permission-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .ar-permission-text {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .ar-permission-btn {
+            padding: 14px 32px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
 // ========== AR SUPPORT DETECTION ==========
 function checkARSupport() {
     // WebXR AR support
@@ -68,6 +262,30 @@ function checkARSupport() {
     }
 
     return 'none';
+}
+
+// ========== CAMERA PERMISSION ERROR ==========
+function showCameraPermissionError() {
+    const existing = document.querySelector('.ar-permission-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'ar-permission-modal';
+    modal.innerHTML = `
+        <div class="ar-permission-content">
+            <div class="ar-permission-icon">📷</div>
+            <div class="ar-permission-title">Cần quyền truy cập Camera</div>
+            <div class="ar-permission-text">
+                Để trải nghiệm AR thật sự, app cần mở camera của bạn.<br><br>
+                <strong>iOS:</strong> Settings > Safari > Camera > Allow<br>
+                <strong>Android:</strong> Cho phép quyền camera khi được hỏi
+            </div>
+            <button class="ar-permission-btn" onclick="this.closest('.ar-permission-modal').remove()">
+                Đã hiểu
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 // ========== AUDIO SYSTEM (Web Audio API) ==========
@@ -206,6 +424,9 @@ class ARScene {
         this.arReadyCallback = null;
         this.loadingTimeout = null;
         this.overlayUI = null;
+        this.cameraStream = null;
+        this.cameraVideo = null;
+        this.cameraOverlay = null;
 
         if (!this.container) {
             console.error(`Container with id "${containerId}" not found`);
@@ -386,21 +607,30 @@ class ARScene {
         this.container.innerHTML = '';
         this.currentModel = modelKey;
 
+        // Main container for grid + AR button
+        const mainContainer = document.createElement('div');
+        mainContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+        `;
+
         const grid = document.createElement('div');
         grid.className = 'ar-objects-grid';
         grid.style.cssText = `
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             gap: 16px;
-            padding: 20px;
             width: 100%;
-            height: 100%;
+            max-width: 400px;
             align-content: center;
         `;
 
         const emoji = EMOJI_FALLBACK[modelKey] || '📦';
-        const arSupport = checkARSupport();
-        const useModelViewer = arSupport === 'webxr' && !this.usingFallback;
 
         for (let i = 0; i < count; i++) {
             const cell = document.createElement('div');
@@ -416,35 +646,17 @@ class ARScene {
                 box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                 cursor: pointer;
                 transition: all 0.2s;
-                animation: float 3s ease-in-out infinite;
+                animation: ar-float-${i % 3} 3s ease-in-out infinite;
                 animation-delay: ${i * 0.15}s;
                 position: relative;
                 overflow: hidden;
             `;
 
-            if (useModelViewer) {
-                const viewer = document.createElement('model-viewer');
-                viewer.src = AR_MODELS[modelKey];
-                viewer.alt = emoji;
-                viewer.style.cssText = `
-                    width: 100%;
-                    height: 100%;
-                    --poster-color: transparent;
-                `;
-                // Enable AR
-                viewer.ar = true;
-                viewer.arModes = 'scene-viewer webxr quick-look';
-                viewer.cameraControls = true;
-                viewer.touchAction = 'none';
-                viewer.autoRotate = false;
-                cell.appendChild(viewer);
-                this.viewerElement = viewer; // Store for AR activation
-            } else {
-                const emojiEl = document.createElement('span');
-                emojiEl.textContent = emoji;
-                emojiEl.style.fontSize = '40px';
-                cell.appendChild(emojiEl);
-            }
+            const emojiEl = document.createElement('span');
+            emojiEl.textContent = emoji;
+            emojiEl.style.fontSize = '40px';
+            emojiEl.style.userSelect = 'none';
+            cell.appendChild(emojiEl);
 
             // Click handler
             cell.addEventListener('click', () => {
@@ -462,7 +674,185 @@ class ARScene {
             grid.appendChild(cell);
         }
 
-        this.container.appendChild(grid);
+        mainContainer.appendChild(grid);
+
+        // Thêm nút "Xem trong AR" nếu device hỗ trợ camera
+        const arSupport = checkARSupport();
+        const hasCamera = navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+
+        if (hasCamera || arSupport !== 'none') {
+            const arButton = document.createElement('button');
+            arButton.className = 'ar-view-btn';
+            arButton.innerHTML = '📷 Xem trong AR';
+            arButton.onclick = () => {
+                this.openCameraAR(modelKey, count);
+            };
+            mainContainer.appendChild(arButton);
+        }
+
+        this.container.appendChild(mainContainer);
+    }
+
+    // MỚI: Mở camera với AR overlay
+    async openCameraAR(modelKey, count) {
+        const emoji = EMOJI_FALLBACK[modelKey] || '📦';
+
+        try {
+            // Request camera
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+
+            this.cameraStream = stream;
+
+            // Tạo fullscreen camera overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'ar-camera-overlay';
+
+            // Video element làm background
+            const video = document.createElement('video');
+            video.className = 'ar-camera-video';
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.muted = true;
+
+            // Đảm bảo video fullscreen
+            video.style.objectFit = 'cover';
+
+            this.cameraVideo = video;
+
+            // Emoji overlay
+            const emojiContainer = document.createElement('div');
+            emojiContainer.className = 'ar-emoji-overlay';
+
+            for (let i = 0; i < count; i++) {
+                const emojiItem = document.createElement('div');
+                emojiItem.className = 'ar-emoji-item';
+                emojiItem.textContent = emoji;
+                emojiItem.style.animation = `ar-float-${i % 3} 3s ease-in-out infinite`;
+                emojiItem.style.animationDelay = `${i * 0.2}s`;
+
+                // Tap để highlight khi đếm
+                emojiItem.addEventListener('click', () => {
+                    playClickSound();
+                    emojiItem.classList.add('highlighted');
+                    setTimeout(() => {
+                        emojiItem.classList.remove('highlighted');
+                    }, 600);
+                });
+
+                emojiContainer.appendChild(emojiItem);
+            }
+
+            // Close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'ar-close-btn';
+            closeBtn.innerHTML = '✕';
+            closeBtn.onclick = () => {
+                this.closeCameraAR();
+            };
+
+            overlay.appendChild(video);
+            overlay.appendChild(emojiContainer);
+            overlay.appendChild(closeBtn);
+
+            document.body.appendChild(overlay);
+            this.cameraOverlay = overlay;
+
+            playClickSound();
+
+        } catch (error) {
+            console.error('Camera access error:', error);
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                showCameraPermissionError();
+            } else {
+                // Fallback: hiển thị emoji trên gradient background
+                this.showFallbackView(modelKey, count);
+            }
+        }
+    }
+
+    // Fallback khi camera không khả dụng
+    showFallbackView(modelKey, count) {
+        const emoji = EMOJI_FALLBACK[modelKey] || '📦';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ar-fallback-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const emojiContainer = document.createElement('div');
+        emojiContainer.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 90%;
+        `;
+
+        for (let i = 0; i < count; i++) {
+            const item = document.createElement('div');
+            item.textContent = emoji;
+            item.style.cssText = `
+                font-size: 64px;
+                animation: ar-float-${i % 3} 3s ease-in-out infinite;
+                animation-delay: ${i * 0.2}s;
+                cursor: pointer;
+                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            `;
+            item.addEventListener('click', () => {
+                playClickSound();
+                item.style.transform = 'scale(1.3)';
+                setTimeout(() => item.style.transform = '', 200);
+            });
+            emojiContainer.appendChild(item);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'ar-close-btn';
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.background = 'rgba(255,255,255,0.9)';
+        closeBtn.onclick = () => overlay.remove();
+
+        overlay.appendChild(emojiContainer);
+        overlay.appendChild(closeBtn);
+        document.body.appendChild(overlay);
+    }
+
+    // Đóng camera overlay
+    closeCameraAR() {
+        // QUAN TRỌNG: Stop stream để tắt đèn camera
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            this.cameraStream = null;
+        }
+
+        if (this.cameraVideo) {
+            this.cameraVideo.srcObject = null;
+            this.cameraVideo = null;
+        }
+
+        if (this.cameraOverlay && this.cameraOverlay.parentNode) {
+            this.cameraOverlay.parentNode.removeChild(this.cameraOverlay);
+        }
+
+        this.cameraOverlay = null;
     }
 
     handleObjectClick(element, index) {
@@ -827,6 +1217,9 @@ class ARScene {
 
     // Cleanup
     destroy() {
+        // Đóng camera nếu đang mở
+        this.closeCameraAR();
+
         if (this.loadingTimeout) {
             clearTimeout(this.loadingTimeout);
         }
@@ -1071,23 +1464,25 @@ function showARToast(message, duration = 3000) {
 
 // ========== AR EXERCISE CLASS ==========
 /**
- * ARExercise - Quản lý bài tập AR đầy đủ với camera background
- * Hiển thị 3D models trên nền camera cho người dùng tương tác
+ * ARExercise - Quản lý bài tập AR với camera background thật sự
+ * Hiển thị emoji trên nền camera cho người dùng đếm và chọn đáp án
  */
 class ARExercise {
     constructor(options = {}) {
         this.options = {
-            containerId: null,
             onAnswerSelect: null,
             onClose: null,
             ...options
         };
 
         this.isActive = false;
-        this.currentModels = [];
+        this.modelType = null;
         this.modelCount = 0;
+        this.choices = [];
         this.overlay = null;
-        this.viewer = null;
+        this.videoElement = null;
+        this.cameraStream = null;
+        this.emojiContainer = null;
     }
 
     /**
@@ -1096,26 +1491,40 @@ class ARExercise {
      * @param {number} count - Số lượng model hiển thị
      * @param {Array} choices - Các lựa chọn đáp án
      */
-    start(modelType, count, choices = []) {
-        const modelUrl = AR_MODELS[modelType];
+    async start(modelType, count, choices = []) {
         const emoji = EMOJI_FALLBACK[modelType] || '📦';
-
-        if (!modelUrl) {
-            console.error('Model not found for:', modelType);
-            showARToast('Không tìm thấy model 3D', 'error');
-            return;
-        }
 
         this.isActive = true;
         this.modelType = modelType;
         this.modelCount = count;
         this.choices = choices;
 
-        // Create fullscreen AR overlay
-        this.createAROverlay(modelUrl, emoji, count, choices);
+        try {
+            // Request camera stream
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+
+            // Tạo fullscreen overlay với camera background
+            this.createExerciseOverlay(emoji, count, choices);
+
+        } catch (error) {
+            console.error('Camera access error:', error);
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                showCameraPermissionError();
+            }
+
+            // Fallback: hiển thị không camera
+            this.startWithoutCamera(modelType, count, choices);
+        }
     }
 
-    createAROverlay(modelUrl, emoji, count, choices) {
+    createExerciseOverlay(emoji, count, choices) {
         // Remove existing overlay
         this.close();
 
@@ -1126,107 +1535,120 @@ class ARExercise {
             position: fixed;
             inset: 0;
             z-index: 9999;
-            background: #000;
             display: flex;
             flex-direction: column;
+            background: #000;
         `;
+
+        // Video background
+        const video = document.createElement('video');
+        video.className = 'ar-camera-video';
+        video.srcObject = this.cameraStream;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.style.objectFit = 'cover';
+
+        this.videoElement = video;
 
         // Close button
         const closeBtn = document.createElement('button');
+        closeBtn.className = 'ar-close-btn';
         closeBtn.innerHTML = '✕';
-        closeBtn.style.cssText = `
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.9);
-            border: none;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10002;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-        `;
         closeBtn.onclick = () => this.close();
 
         // Question text
         const questionText = document.createElement('div');
-        questionText.id = 'ar-question-text';
         questionText.innerHTML = `Đếm số ${emoji} và chọn đáp án đúng!`;
         questionText.style.cssText = `
             position: absolute;
-            top: 16px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255,255,255,0.95);
-            color: var(--color-text);
-            padding: 12px 24px;
-            border-radius: 24px;
+            color: #333;
+            padding: 14px 28px;
+            border-radius: 28px;
             font-family: 'Nunito', sans-serif;
             font-size: 16px;
             font-weight: 700;
             z-index: 10002;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             max-width: 80%;
             text-align: center;
         `;
 
-        // Model viewer with AR
-        const viewer = document.createElement('model-viewer');
-        viewer.src = modelUrl;
-        viewer.alt = emoji;
-        viewer.ar = true;
-        viewer.arModes = 'scene-viewer webxr quick-look';
-        viewer.cameraControls = true;
-        viewer.autoRotate = false;
-        viewer.style.cssText = `
-            width: 100%;
-            flex: 1;
-            min-height: 50vh;
+        // Emoji container (được user có thể tap để đếm)
+        const emojiContainer = document.createElement('div');
+        emojiContainer.className = 'ar-emoji-overlay';
+        emojiContainer.style.cssText = `
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            bottom: 200px;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 20px;
+            z-index: 10000;
         `;
 
-        // Instruction overlay
-        const instruction = document.createElement('div');
-        instruction.id = 'ar-instruction';
-        instruction.innerHTML = `
-            📱 Di chuyển điện thoại để tìm mặt phẳng<br>
-            📍 Model sẽ xuất hiện khi AR bắt đầu
-        `;
-        instruction.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.75);
-            color: white;
-            padding: 20px 30px;
-            border-radius: 16px;
-            font-family: 'Nunito', sans-serif;
-            font-size: 14px;
-            text-align: center;
-            z-index: 10001;
-            max-width: 80%;
-        `;
+        let tapCount = 0;
 
-        // Model counter display
-        const counterDisplay = document.createElement('div');
-        counterDisplay.id = 'ar-model-counter';
-        counterDisplay.innerHTML = `<span style="font-size: 24px;">${emoji}</span> × ${count}`;
-        counterDisplay.style.cssText = `
+        for (let i = 0; i < count; i++) {
+            const emojiItem = document.createElement('div');
+            emojiItem.className = 'ar-emoji-item';
+            emojiItem.textContent = emoji;
+            emojiItem.style.cssText = `
+                font-size: 56px;
+                cursor: pointer;
+                user-select: none;
+                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+                animation: ar-float-${i % 3} 3s ease-in-out infinite;
+                animation-delay: ${i * 0.2}s;
+                transition: transform 0.2s;
+            `;
+
+            // Tap để đếm
+            emojiItem.addEventListener('click', () => {
+                playClickSound();
+                tapCount++;
+
+                // Highlight animation
+                emojiItem.style.transform = 'scale(1.4) rotate(15deg)';
+                emojiItem.style.filter = 'drop-shadow(0 0 12px rgba(255,215,0,0.8))';
+
+                setTimeout(() => {
+                    emojiItem.style.transform = '';
+                    emojiItem.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))';
+                }, 300);
+            });
+
+            emojiContainer.appendChild(emojiItem);
+        }
+
+        this.emojiContainer = emojiContainer;
+
+        // Tap counter display
+        const tapCounter = document.createElement('div');
+        tapCounter.id = 'ar-tap-counter';
+        tapCounter.innerHTML = `Đã đếm: <span id="tap-count">0</span> / ${count}`;
+        tapCounter.style.cssText = `
             position: absolute;
-            bottom: 180px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255,255,255,0.95);
-            padding: 16px 32px;
-            border-radius: 32px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
             font-family: 'Nunito', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            z-index: 10002;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            z-index: 10001;
         `;
 
         // Answer choices panel
@@ -1238,21 +1660,21 @@ class ARExercise {
             left: 0;
             right: 0;
             background: white;
-            padding: 20px;
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            padding: 24px 20px;
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+            border-radius: 28px 28px 0 0;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
             z-index: 10002;
         `;
 
         const choicesTitle = document.createElement('div');
-        choicesTitle.innerHTML = 'Chọn số lượng:';
+        choicesTitle.innerHTML = '🔢 Chọn số lượng:';
         choicesTitle.style.cssText = `
             font-family: 'Nunito', sans-serif;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
-            color: var(--color-text);
-            margin-bottom: 12px;
+            color: #333;
+            margin-bottom: 16px;
             text-align: center;
         `;
 
@@ -1263,19 +1685,168 @@ class ARExercise {
             gap: 12px;
         `;
 
-        choices.forEach(choice => {
+        choices.forEach((choice, index) => {
             const choiceBtn = document.createElement('button');
             choiceBtn.innerHTML = choice;
+            choiceBtn.className = 'ar-choice-btn';
             choiceBtn.style.cssText = `
-                padding: 16px;
+                padding: 18px;
                 border: 3px solid #E0E0E0;
                 border-radius: 16px;
                 background: white;
                 font-family: 'Nunito', sans-serif;
-                font-size: 20px;
+                font-size: 24px;
                 font-weight: 700;
                 cursor: pointer;
                 transition: all 0.2s;
+                color: #333;
+            `;
+            choiceBtn.onclick = () => this.handleAnswer(choice, choiceBtn, choiceBtn);
+            choicesGrid.appendChild(choiceBtn);
+        });
+
+        choicesPanel.appendChild(choicesTitle);
+        choicesPanel.appendChild(choicesGrid);
+
+        // Assemble overlay
+        overlay.appendChild(video);
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(questionText);
+        overlay.appendChild(emojiContainer);
+        overlay.appendChild(tapCounter);
+        overlay.appendChild(choicesPanel);
+
+        document.body.appendChild(overlay);
+        this.overlay = overlay;
+
+        playClickSound();
+
+        // Update tap counter khi tap vào emoji
+        emojiContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('ar-emoji-item')) {
+                const counterEl = document.getElementById('tap-count');
+                if (counterEl) {
+                    counterEl.textContent = tapCount;
+                }
+            }
+        });
+    }
+
+    // Fallback khi không có camera
+    startWithoutCamera(modelType, count, choices) {
+        const emoji = EMOJI_FALLBACK[modelType] || '📦';
+
+        // Close any existing
+        this.close();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ar-exercise-fallback';
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'ar-close-btn';
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.background = 'rgba(255,255,255,0.9)';
+        closeBtn.onclick = () => this.close();
+
+        // Question text
+        const questionText = document.createElement('div');
+        questionText.innerHTML = `Đếm số ${emoji} và chọn đáp án đúng!`;
+        questionText.style.cssText = `
+            margin-top: 60px;
+            margin-left: 20px;
+            margin-right: 20px;
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 14px 28px;
+            border-radius: 28px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        `;
+
+        // Emoji grid
+        const emojiContainer = document.createElement('div');
+        emojiContainer.style.cssText = `
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        `;
+
+        for (let i = 0; i < count; i++) {
+            const item = document.createElement('div');
+            item.textContent = emoji;
+            item.style.cssText = `
+                font-size: 56px;
+                cursor: pointer;
+                user-select: none;
+                animation: ar-float-${i % 3} 3s ease-in-out infinite;
+                animation-delay: ${i * 0.2}s;
+                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            `;
+            item.addEventListener('click', () => {
+                playClickSound();
+                item.style.transform = 'scale(1.3)';
+                setTimeout(() => item.style.transform = '', 200);
+            });
+            emojiContainer.appendChild(item);
+        }
+
+        // Answer choices panel
+        const choicesPanel = document.createElement('div');
+        choicesPanel.style.cssText = `
+            background: white;
+            padding: 24px 20px;
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+            border-radius: 28px 28px 0 0;
+        `;
+
+        const choicesTitle = document.createElement('div');
+        choicesTitle.innerHTML = '🔢 Chọn số lượng:';
+        choicesTitle.style.cssText = `
+            font-family: 'Nunito', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 16px;
+            text-align: center;
+        `;
+
+        const choicesGrid = document.createElement('div');
+        choicesGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        `;
+
+        choices.forEach((choice) => {
+            const choiceBtn = document.createElement('button');
+            choiceBtn.innerHTML = choice;
+            choiceBtn.style.cssText = `
+                padding: 18px;
+                border: 3px solid #E0E0E0;
+                border-radius: 16px;
+                background: white;
+                font-family: 'Nunito', sans-serif;
+                font-size: 24px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: #333;
             `;
             choiceBtn.onclick = () => this.handleAnswer(choice, choiceBtn);
             choicesGrid.appendChild(choiceBtn);
@@ -1284,57 +1855,97 @@ class ARExercise {
         choicesPanel.appendChild(choicesTitle);
         choicesPanel.appendChild(choicesGrid);
 
-        // Hide instruction when AR starts
-        viewer.addEventListener('load', () => {
-            setTimeout(() => {
-                instruction.style.opacity = '0';
-                setTimeout(() => instruction.remove(), 500);
-            }, 2000);
-        });
-
-        // Assemble overlay
         overlay.appendChild(closeBtn);
         overlay.appendChild(questionText);
-        overlay.appendChild(viewer);
-        overlay.appendChild(instruction);
-        overlay.appendChild(counterDisplay);
+        overlay.appendChild(emojiContainer);
         overlay.appendChild(choicesPanel);
 
         document.body.appendChild(overlay);
         this.overlay = overlay;
-        this.viewer = viewer;
 
         playClickSound();
     }
 
     handleAnswer(answer, button) {
+        if (!this.isActive) return;
+
+        const isCorrect = parseInt(answer) === this.modelCount;
+
         // Disable all buttons
-        const buttons = this.overlay.querySelectorAll('#ar-choices-panel button');
-        buttons.forEach(btn => btn.disabled = true);
-
-        // Highlight selected
-        button.style.background = '#FF6B6B';
-        button.style.color = 'white';
-        button.style.borderColor = '#FF6B6B';
-
-        // Call answer callback
-        if (this.options.onAnswerSelect) {
-            this.options.onAnswerSelect(answer, this.modelCount);
+        const buttons = this.overlay.querySelectorAll('.ar-choice-btn, #ar-choices-panel button');
+        if (buttons.length > 0) {
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'default';
+            });
         }
 
-        // Wait and close
+        if (isCorrect) {
+            // Correct answer
+            playCorrectSound();
+
+            button.style.background = 'linear-gradient(135deg, #A8E6CF, #81C784)';
+            button.style.color = 'white';
+            button.style.borderColor = '#81C784';
+            button.style.animation = 'ar-celebrate 0.6s ease-out';
+
+            // Animate all emoji
+            if (this.emojiContainer) {
+                const emojiItems = this.emojiContainer.querySelectorAll('.ar-emoji-item');
+                emojiItems.forEach((item, i) => {
+                    setTimeout(() => {
+                        item.style.animation = 'ar-celebrate 0.6s ease-out';
+                    }, i * 100);
+                });
+            }
+
+            // Call callback
+            if (this.options.onAnswerSelect) {
+                this.options.onAnswerSelect(answer, this.modelCount, true);
+            }
+
+        } else {
+            // Wrong answer
+            playWrongSound();
+
+            button.style.background = 'linear-gradient(135deg, #FFCDD2, #EF9A9A)';
+            button.style.color = 'white';
+            button.style.borderColor = '#EF9A9A';
+            button.style.animation = 'ar-shake 0.5s ease-out';
+
+            // Call callback
+            if (this.options.onAnswerSelect) {
+                this.options.onAnswerSelect(answer, this.modelCount, false);
+            }
+        }
+
+        // Close after delay
         setTimeout(() => {
             this.close();
-        }, 1500);
+        }, 1800);
     }
 
     close() {
-        if (this.overlay && this.overlay.parentNode) {
-            document.body.removeChild(this.overlay);
+        // QUAN TRỌNG: Luôn stop stream trước
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            this.cameraStream = null;
         }
+
+        if (this.videoElement) {
+            this.videoElement.srcObject = null;
+            this.videoElement = null;
+        }
+
+        if (this.overlay && this.overlay.parentNode) {
+            this.overlay.parentNode.removeChild(this.overlay);
+        }
+
         this.isActive = false;
         this.overlay = null;
-        this.viewer = null;
+        this.emojiContainer = null;
 
         if (this.options.onClose) {
             this.options.onClose();
@@ -1354,6 +1965,31 @@ function getARDeviceInfo() {
     };
     return info;
 }
+
+// ========== GLOBAL CAMERA CLEANUP ON PAGE HIDE ==========
+// Đảm bảo tắt camera khi user chuyển tab hoặc thoát app
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Dừng tất cả streams đang hoạt động
+        const videos = document.querySelectorAll('video[srcObject]');
+        videos.forEach(video => {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        });
+    }
+});
+
+// Page unload cleanup
+window.addEventListener('beforeunload', () => {
+    const videos = document.querySelectorAll('video[srcObject]');
+    videos.forEach(video => {
+        if (video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
+    });
+});
 
 // All classes and functions are globally available when loaded as script
 // No ES6 exports needed for regular script loading
