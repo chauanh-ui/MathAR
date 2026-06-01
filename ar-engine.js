@@ -5,12 +5,16 @@
 
 // ========== 3D MODELS CDN ==========
 const AR_MODELS = {
-    // Con vật
+    // Con vật (dùng models có sẵn, sẽ update với animal models thật sau)
     cat:    'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     dog:    'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
     duck:   'https://modelviewer.dev/shared-assets/models/FlightHelmet.glb',
     rabbit: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
     bear:   'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    panda:  'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+    fox:    'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    penguin: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+    unicorn: 'https://modelviewer.dev/shared-assets/models/MaterialsVariantsShoe.glb',
     // Trái cây / hoa quả
     apple:  'https://cdn.glitch.global/36cb8393-65c6-408d-a538-055ada20431b/apple.glb',
     banana: 'https://cdn.glitch.global/36cb8393-65c6-408d-a538-055ada20431b/banana.glb',
@@ -36,6 +40,7 @@ const AR_MODELS = {
 // Emoji fallback khi không load được 3D model
 const EMOJI_FALLBACK = {
     cat: '🐱', dog: '🐶', duck: '🦆', rabbit: '🐰', bear: '🐻',
+    panda: '🐼', fox: '🦊', penguin: '🐧', unicorn: '🦄',
     apple: '🍎', banana: '🍌', orange: '🍊', grape: '🍇',
     star: '⭐', cube: '🟦', sphere: '🔮',
     number1: '1️⃣', number2: '2️⃣', number3: '3️⃣', number4: '4️⃣',

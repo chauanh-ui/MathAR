@@ -13,6 +13,9 @@
     <!-- Model Viewer for AR/3D -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
+    <!-- AR Engine -->
+    <script src="ar-engine.js"></script>
+
     <style>
         /* ========== CSS Variables - Design System ========== */
         :root {
@@ -5517,6 +5520,7 @@
                 this.combo = 0;
                 this.hintsRemaining = 2;
                 this.isWaiting = false;
+                this.currentARScene = null;
             }
 
             init() {
@@ -5583,46 +5587,96 @@
                 container.innerHTML = '';
                 if (hintBtn) container.appendChild(hintBtn);
 
-                // Create grid of objects
-                const grid = document.createElement('div');
-                grid.id = 'ex1ObjectsGrid';
-                grid.style.cssText = `
-                    width: 100%;
-                    height: 100%;
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-                    gap: 12px;
-                    padding: 20px;
-                    align-content: center;
-                    justify-content: center;
-                `;
-
-                const emoji = EXERCISE_1_CONFIG.animalEmojis[animal];
-
-                for (let i = 0; i < count; i++) {
-                    const obj = document.createElement('div');
-                    obj.className = 'ex1-object';
-                    obj.dataset.index = i;
-                    obj.style.cssText = `
-                        font-size: 36px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        animation: float 3s ease-in-out infinite;
-                        animation-delay: ${i * 0.1}s;
-                        cursor: pointer;
-                        transition: transform 0.2s;
-                    `;
-                    obj.textContent = emoji;
-                    obj.addEventListener('click', () => {
-                        obj.style.transform = 'scale(1.2)';
-                        playClickSound();
-                        setTimeout(() => obj.style.transform = '', 200);
+                // Use AR engine for 3D models
+                if (typeof ARScene !== 'undefined') {
+                    // Create AR scene
+                    const arScene = new ARScene('ex1ARContainer', {
+                        arMode: localStorage.getItem('mathAR_arEnabled') !== 'false',
+                        backgroundColor: '#E8F5E9',
+                        fallbackToEmoji: true
                     });
-                    grid.appendChild(obj);
-                }
 
-                container.appendChild(grid);
+                    // Show objects
+                    arScene.showObjects(animal, count);
+                    this.currentARScene = arScene;
+
+                    // Add AR button if supported
+                    if (checkARSupport && checkARSupport() === 'webxr') {
+                        const arBtn = document.createElement('button');
+                        arBtn.className = 'ar-float-btn';
+                        arBtn.innerHTML = '🥽 AR';
+                        arBtn.style.cssText = `
+                            position: absolute;
+                            bottom: 80px;
+                            right: 16px;
+                            width: 56px;
+                            height: 56px;
+                            border-radius: 50%;
+                            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+                            color: white;
+                            border: none;
+                            font-size: 20px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                            z-index: 100;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        `;
+                        arBtn.onclick = () => this.startAR();
+                        container.appendChild(arBtn);
+                    }
+                } else {
+                    // Fallback to emoji grid
+                    const grid = document.createElement('div');
+                    grid.id = 'ex1ObjectsGrid';
+                    grid.style.cssText = `
+                        width: 100%;
+                        height: 100%;
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+                        gap: 12px;
+                        padding: 20px;
+                        align-content: center;
+                        justify-content: center;
+                    `;
+
+                    const emoji = EXERCISE_1_CONFIG.animalEmojis[animal];
+
+                    for (let i = 0; i < count; i++) {
+                        const obj = document.createElement('div');
+                        obj.className = 'ex1-object';
+                        obj.dataset.index = i;
+                        obj.style.cssText = `
+                            font-size: 36px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            animation: float 3s ease-in-out infinite;
+                            animation-delay: ${i * 0.1}s;
+                            cursor: pointer;
+                            transition: transform 0.2s;
+                        `;
+                        obj.textContent = emoji;
+                        obj.addEventListener('click', () => {
+                            obj.style.transform = 'scale(1.2)';
+                            playClickSound();
+                            setTimeout(() => obj.style.transform = '', 200);
+                        });
+                        grid.appendChild(obj);
+                    }
+
+                    container.appendChild(grid);
+                }
+            }
+
+            startAR() {
+                if (this.currentARScene) {
+                    this.currentARScene.startAR();
+                } else {
+                    showToast('AR không khả dụng trên thiết bị này', 'warning');
+                }
             }
 
             loadChoices(choices, correctAnswer) {
