@@ -431,8 +431,14 @@ class ARScene {
                     height: 100%;
                     --poster-color: transparent;
                 `;
+                // Enable AR
+                viewer.ar = true;
+                viewer.arModes = 'scene-viewer webxr quick-look';
                 viewer.cameraControls = true;
+                viewer.touchAction = 'none';
+                viewer.autoRotate = false;
                 cell.appendChild(viewer);
+                this.viewerElement = viewer; // Store for AR activation
             } else {
                 const emojiEl = document.createElement('span');
                 emojiEl.textContent = emoji;
@@ -473,30 +479,107 @@ class ARScene {
     // Bắt đầu AR session
     async startAR() {
         const arSupport = checkARSupport();
-        if (arSupport !== 'webxr') {
+
+        // Check device support
+        if (arSupport === 'none') {
             this.showToast('Thiết bị của bạn không hỗ trợ AR. Hiển thị 3D thường.');
             return false;
         }
 
-        if (!this.viewerElement) {
-            this.showToast('Không có mô hình 3D để hiển thị AR');
+        if (!this.currentModel) {
+            this.showToast('Không có mô hình để hiển thị AR');
             return false;
         }
 
         this.options.arMode = true;
-        this.showAROverlay();
 
         try {
-            // Trigger AR on model-viewer
-            if (this.viewerElement.activateAR) {
-                await this.viewerElement.activateAR();
-            } else if (this.viewerElement.ar) {
-                this.viewerElement.dispatchEvent(new Event('ar-click'));
-            }
+            // Create a dedicated AR viewer
+            const modelUrl = AR_MODELS[this.currentModel];
+            const emoji = EMOJI_FALLBACK[this.currentModel] || '📦';
+
+            // Create fullscreen AR overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'ar-fullscreen-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                background: white;
+            `;
+
+            const viewer = document.createElement('model-viewer');
+            viewer.src = modelUrl;
+            viewer.alt = emoji;
+            viewer.ar = true;
+            viewer.arModes = 'scene-viewer webxr quick-look';
+            viewer.cameraControls = true;
+            viewer.style.cssText = `
+                width: 100%;
+                height: 100%;
+                --poster-color: transparent;
+            `;
+
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = `
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: white;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                z-index: 10000;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            `;
+            closeBtn.onclick = () => {
+                document.body.removeChild(overlay);
+                this.options.arMode = false;
+            };
+
+            // Add instruction
+            const instruction = document.createElement('div');
+            instruction.innerHTML = '📍 Di chuyển điện thoại để xem model xung quanh bạn';
+            instruction.style.cssText = `
+                position: absolute;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 24px;
+                font-size: 14px;
+                text-align: center;
+                z-index: 10000;
+            `;
+
+            overlay.appendChild(viewer);
+            overlay.appendChild(closeBtn);
+            overlay.appendChild(instruction);
+            document.body.appendChild(overlay);
+
+            // Auto-trigger AR button on model-viewer
+            viewer.addEventListener('load', () => {
+                // Try to activate AR automatically
+                setTimeout(() => {
+                    const arButton = viewer.shadowRoot?.querySelector('[slot="ar-button"]') ||
+                                      viewer.querySelector('[data-variant="ar"]');
+                    if (arButton) {
+                        arButton.click();
+                    }
+                }, 500);
+            });
+
             return true;
         } catch (error) {
             console.error('AR start error:', error);
-            this.showToast('Không thể bắt đầu AR session');
+            this.showToast('Không thể bắt đầu AR: ' + error.message);
             return false;
         }
     }

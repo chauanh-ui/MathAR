@@ -5600,33 +5600,32 @@
                     arScene.showObjects(animal, count);
                     this.currentARScene = arScene;
 
-                    // Add AR button if supported
-                    if (checkARSupport && checkARSupport() === 'webxr') {
-                        const arBtn = document.createElement('button');
-                        arBtn.className = 'ar-float-btn';
-                        arBtn.innerHTML = '🥽 AR';
-                        arBtn.style.cssText = `
-                            position: absolute;
-                            bottom: 80px;
-                            right: 16px;
-                            width: 56px;
-                            height: 56px;
-                            border-radius: 50%;
-                            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
-                            color: white;
-                            border: none;
-                            font-size: 20px;
-                            font-weight: 700;
-                            cursor: pointer;
-                            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-                            z-index: 100;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        `;
-                        arBtn.onclick = () => this.startAR();
-                        container.appendChild(arBtn);
-                    }
+                    // Add AR button - always show, will check support when clicked
+                    const arBtn = document.createElement('button');
+                    arBtn.className = 'ar-float-btn';
+                    arBtn.innerHTML = '🥽 AR';
+                    arBtn.style.cssText = `
+                        position: absolute;
+                        bottom: 80px;
+                        right: 16px;
+                        width: 56px;
+                        height: 56px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+                        color: white;
+                        border: none;
+                        font-size: 20px;
+                        font-weight: 700;
+                        cursor: pointer;
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                        z-index: 100;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        animation: pulse-glow 2s ease-in-out infinite;
+                    `;
+                    arBtn.onclick = () => this.startAR();
+                    container.appendChild(arBtn);
                 } else {
                     // Fallback to emoji grid
                     const grid = document.createElement('div');
