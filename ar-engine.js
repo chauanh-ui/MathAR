@@ -1069,6 +1069,279 @@ function showARToast(message, duration = 3000) {
     }, duration);
 }
 
+// ========== AR EXERCISE CLASS ==========
+/**
+ * ARExercise - Quản lý bài tập AR đầy đủ với camera background
+ * Hiển thị 3D models trên nền camera cho người dùng tương tác
+ */
+class ARExercise {
+    constructor(options = {}) {
+        this.options = {
+            containerId: null,
+            onAnswerSelect: null,
+            onClose: null,
+            ...options
+        };
+
+        this.isActive = false;
+        this.currentModels = [];
+        this.modelCount = 0;
+        this.overlay = null;
+        this.viewer = null;
+    }
+
+    /**
+     * Mở AR exercise với camera background
+     * @param {string} modelType - Loại model ('apple', 'cat', etc.)
+     * @param {number} count - Số lượng model hiển thị
+     * @param {Array} choices - Các lựa chọn đáp án
+     */
+    start(modelType, count, choices = []) {
+        const modelUrl = AR_MODELS[modelType];
+        const emoji = EMOJI_FALLBACK[modelType] || '📦';
+
+        if (!modelUrl) {
+            console.error('Model not found for:', modelType);
+            showARToast('Không tìm thấy model 3D', 'error');
+            return;
+        }
+
+        this.isActive = true;
+        this.modelType = modelType;
+        this.modelCount = count;
+        this.choices = choices;
+
+        // Create fullscreen AR overlay
+        this.createAROverlay(modelUrl, emoji, count, choices);
+    }
+
+    createAROverlay(modelUrl, emoji, count, choices) {
+        // Remove existing overlay
+        this.close();
+
+        // Create main overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'ar-exercise-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Close button
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10002;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        `;
+        closeBtn.onclick = () => this.close();
+
+        // Question text
+        const questionText = document.createElement('div');
+        questionText.id = 'ar-question-text';
+        questionText.innerHTML = `Đếm số ${emoji} và chọn đáp án đúng!`;
+        questionText.style.cssText = `
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            color: var(--color-text);
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            z-index: 10002;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            max-width: 80%;
+            text-align: center;
+        `;
+
+        // Model viewer with AR
+        const viewer = document.createElement('model-viewer');
+        viewer.src = modelUrl;
+        viewer.alt = emoji;
+        viewer.ar = true;
+        viewer.arModes = 'scene-viewer webxr quick-look';
+        viewer.cameraControls = true;
+        viewer.autoRotate = false;
+        viewer.style.cssText = `
+            width: 100%;
+            flex: 1;
+            min-height: 50vh;
+        `;
+
+        // Instruction overlay
+        const instruction = document.createElement('div');
+        instruction.id = 'ar-instruction';
+        instruction.innerHTML = `
+            📱 Di chuyển điện thoại để tìm mặt phẳng<br>
+            📍 Model sẽ xuất hiện khi AR bắt đầu
+        `;
+        instruction.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 16px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            text-align: center;
+            z-index: 10001;
+            max-width: 80%;
+        `;
+
+        // Model counter display
+        const counterDisplay = document.createElement('div');
+        counterDisplay.id = 'ar-model-counter';
+        counterDisplay.innerHTML = `<span style="font-size: 24px;">${emoji}</span> × ${count}`;
+        counterDisplay.style.cssText = `
+            position: absolute;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 16px 32px;
+            border-radius: 32px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            z-index: 10002;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        `;
+
+        // Answer choices panel
+        const choicesPanel = document.createElement('div');
+        choicesPanel.id = 'ar-choices-panel';
+        choicesPanel.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            z-index: 10002;
+        `;
+
+        const choicesTitle = document.createElement('div');
+        choicesTitle.innerHTML = 'Chọn số lượng:';
+        choicesTitle.style.cssText = `
+            font-family: 'Nunito', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 12px;
+            text-align: center;
+        `;
+
+        const choicesGrid = document.createElement('div');
+        choicesGrid.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        `;
+
+        choices.forEach(choice => {
+            const choiceBtn = document.createElement('button');
+            choiceBtn.innerHTML = choice;
+            choiceBtn.style.cssText = `
+                padding: 16px;
+                border: 3px solid #E0E0E0;
+                border-radius: 16px;
+                background: white;
+                font-family: 'Nunito', sans-serif;
+                font-size: 20px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            `;
+            choiceBtn.onclick = () => this.handleAnswer(choice, choiceBtn);
+            choicesGrid.appendChild(choiceBtn);
+        });
+
+        choicesPanel.appendChild(choicesTitle);
+        choicesPanel.appendChild(choicesGrid);
+
+        // Hide instruction when AR starts
+        viewer.addEventListener('load', () => {
+            setTimeout(() => {
+                instruction.style.opacity = '0';
+                setTimeout(() => instruction.remove(), 500);
+            }, 2000);
+        });
+
+        // Assemble overlay
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(questionText);
+        overlay.appendChild(viewer);
+        overlay.appendChild(instruction);
+        overlay.appendChild(counterDisplay);
+        overlay.appendChild(choicesPanel);
+
+        document.body.appendChild(overlay);
+        this.overlay = overlay;
+        this.viewer = viewer;
+
+        playClickSound();
+    }
+
+    handleAnswer(answer, button) {
+        // Disable all buttons
+        const buttons = this.overlay.querySelectorAll('#ar-choices-panel button');
+        buttons.forEach(btn => btn.disabled = true);
+
+        // Highlight selected
+        button.style.background = '#FF6B6B';
+        button.style.color = 'white';
+        button.style.borderColor = '#FF6B6B';
+
+        // Call answer callback
+        if (this.options.onAnswerSelect) {
+            this.options.onAnswerSelect(answer, this.modelCount);
+        }
+
+        // Wait and close
+        setTimeout(() => {
+            this.close();
+        }, 1500);
+    }
+
+    close() {
+        if (this.overlay && this.overlay.parentNode) {
+            document.body.removeChild(this.overlay);
+        }
+        this.isActive = false;
+        this.overlay = null;
+        this.viewer = null;
+
+        if (this.options.onClose) {
+            this.options.onClose();
+        }
+    }
+}
+
 // ========== AR INFO ==========
 function getARDeviceInfo() {
     const support = checkARSupport();
@@ -1085,6 +1358,7 @@ function getARDeviceInfo() {
 // ========== EXPORTS ==========
 export {
     ARScene,
+    ARExercise,
     createARObjectGrid,
     checkARSupport,
     playCorrectSound,
