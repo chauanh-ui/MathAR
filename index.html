@@ -13,9 +13,6 @@
     <!-- Model Viewer for AR/3D -->
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
-    <!-- AR Engine -->
-    <script src="ar-engine.js"></script>
-
     <style>
         /* ========== CSS Variables - Design System ========== */
         :root {
@@ -4876,6 +4873,16 @@
             </div>
         </div>
     </div>
+
+    <!-- AR Engine - Load before main script -->
+    <script src="ar-engine.js"></script>
+    <script>
+        // Debug: Check if AR Engine loaded
+        console.log('AR Engine Check:', typeof ARExercise !== 'undefined' ? '✓ ARExercise available' : '✗ ARExercise NOT available');
+        if (typeof ARExercise === 'undefined') {
+            console.error('AR Engine failed to load!');
+        }
+    </script>
 
     <script>
         // ========== STATE MANAGEMENT ==========
