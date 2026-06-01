@@ -1355,18 +1355,5 @@ function getARDeviceInfo() {
     return info;
 }
 
-// ========== EXPORTS ==========
-export {
-    ARScene,
-    ARExercise,
-    createARObjectGrid,
-    checkARSupport,
-    playCorrectSound,
-    playWrongSound,
-    playStarSound,
-    playClickSound,
-    showARToast,
-    getARDeviceInfo,
-    AR_MODELS,
-    EMOJI_FALLBACK
-};
+// All classes and functions are globally available when loaded as script
+// No ES6 exports needed for regular script loading
